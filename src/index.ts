@@ -5,7 +5,10 @@ import { prisma } from "./prisma.js";
 const app = new Hono()
 //Customers
 app.get('/customers/top', async (c) => {
-  const topCustomers = await prisma.customer.findMany({ orderBy: { orders: { _count: 'desc' } }, take: 5 });
+  const topCustomers = await prisma.customer.findMany({ 
+    orderBy: { orders: { _count: 'desc' } }, 
+    take: 5 
+  });
   return c.json(topCustomers);
   
 });
@@ -19,12 +22,14 @@ app.post('/customers', async (c) => {
   }
 });
 app.get('/customers/:id', async (c) => {
-  const customer = await prisma.customer.findUnique({ where: { id: Number(c.req.param('id')) } });
+  const customer = await prisma.customer.findUnique({
+     where: { id: Number(c.req.param('id')) } });
   return c.json(customer);
 });
 
 app.get('/customers/:id/orders', async (c) => {
-  const orders = await prisma.order.findMany({ where: { customerId: Number(c.req.param('id')) } });
+  const orders = await prisma.order.findMany({ 
+    where: { customerId: Number(c.req.param('id')) } });
   return c.json(orders);
 });
 
@@ -40,7 +45,9 @@ app.post('/restaurants', async (c) => {
   }
 });
 app.get('/restaurants/:id/menu', async (c) => {
-  const menuItems = await prisma.menuItem.findMany({ where: { restaurantId: Number(c.req.param('id')), isAvailable: true } });
+  const menuItems = await prisma.menuItem.findMany({ 
+    where: { restaurantId: Number(c.req.param('id')), 
+      isAvailable: true } });
   return c.json(menuItems);
 });
 
@@ -56,7 +63,9 @@ app.post('/restaurants/:id/menu', async (c) => {
 });
 app.patch('/menu/:id', async (c) => {
   const { price, isAvailable } = await c.req.json<{ price: number; isAvailable: boolean }>();
-  const updatedItem = await prisma.menuItem.update({ where: { id: Number(c.req.param('id')) }, data: { price, isAvailable } });
+  const updatedItem = await prisma.menuItem.update({ 
+    where: { id: Number(c.req.param('id')) }, 
+    data: { price, isAvailable } });
   return c.json(updatedItem);
 });
 
@@ -105,22 +114,33 @@ app.post('/orders', async (c) => {
   }
 });
 app.get('/orders/:id', async (c) => {
-  const order = await prisma.order.findUnique({ where: { id: Number(c.req.param('id')) }, include: { orderItems: true } });
+  const order = await prisma.order.findUnique({ 
+    where: { id: Number(c.req.param('id')) },
+     include: { orderItems: true } });
   return c.json(order);
 });
 app.patch('/orders/:id/status', async (c) => {
   const { status } = await c.req.json<{ status: string }>();
-  const updatedOrder = await prisma.order.update({ where: { id: Number(c.req.param('id')) }, data: { status } });
+  const updatedOrder = await prisma.order.update({ 
+    where: { id: Number(c.req.param('id')) },
+     data: { status } });
   return c.json(updatedOrder);
 })
 //Reports and insights 
 app.get('/restaurants/:id/revenue', async (c) => {
-  const orders = await prisma.order.findMany({ where: { restaurantId: Number(c.req.param('id')) } });
+  const orders = await prisma.order.findMany({ 
+    where: { restaurantId: Number(c.req.param('id')) }
+   });
   const revenue = orders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
   return c.json({ revenue });
 });
 app.get('/menu/top-items', async (c) => {
-  const topItems = await prisma.orderItem.groupBy({ by: ['menuItemId'], _sum: { quantity: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 1 });
+  const topItems = await prisma.orderItem.groupBy({ 
+    by: ['menuItemId'], 
+    _sum: { quantity: true }, 
+    orderBy: { _sum: { quantity: 'desc' } }, 
+    take: 1
+   });
   return c.json(topItems);
 });
 
