@@ -23,7 +23,8 @@ app.post('/customers', async (c) => {
 });
 app.get('/customers/:id', async (c) => {
   const customer = await prisma.customer.findUnique({
-     where: { id: Number(c.req.param('id')) } });
+     where: { id: Number(c.req.param('id')) } 
+    });
   return c.json(customer);
 });
 
