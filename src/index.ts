@@ -4,14 +4,6 @@ import { prisma } from "./prisma.js";
 
 const app = new Hono()
 //Customers
-app.get('/customers/top', async (c) => {
-  const topCustomers = await prisma.customer.findMany({ 
-    orderBy: { orders: { _count: 'desc' } }, 
-    take: 5 
-  });
-  return c.json(topCustomers);
-  
-});
 app.post('/customers', async (c) => {
   const { name, email, phoneNumber, address } = await c.req.json<{ name: string; email: string; phoneNumber: string; address: string }>();
   try {
@@ -21,6 +13,42 @@ app.post('/customers', async (c) => {
       return c.json({ error: error instanceof Error ? error.message : 'An unknown error occurred' }, 400);
   }
 });
+
+app.get("/customers/top", async (context) => {
+  const topCustomers = await prisma.order.groupBy({
+    by: ["customerId"],
+    _count: {
+      id: true, 
+    },
+    orderBy: {
+      _count: {
+        id: "desc", 
+      },
+    },
+    take: 5, 
+  });
+  if (topCustomers.length > 0) {
+    const customerIds = topCustomers.map(customer => customer.customerId);
+
+    const customers = await prisma.customer.findMany({
+      where: {
+        id: {
+          in: customerIds, 
+        },
+      },
+    });
+    const result = topCustomers.map((topCustomer) => {
+      const customer = customers.find(c => c.id === topCustomer.customerId);
+      return {
+        customer,
+        orderCount: topCustomer._count.id, 
+      };
+    });
+    return context.json(result, 200);
+  }
+  return context.json({ message: "No customers found" }, 200);
+});
+
 app.get('/customers/:id', async (c) => {
   const customer = await prisma.customer.findUnique({
      where: { id: Number(c.req.param('id')) } 
@@ -45,6 +73,7 @@ app.post('/restaurants', async (c) => {
       return c.json({ error: error instanceof Error ? error.message : 'An unknown error occurred' }, 400);
   }
 });
+
 app.get('/restaurants/:id/menu', async (c) => {
   const menuItems = await prisma.menuItem.findMany({ 
     where: { restaurantId: Number(c.req.param('id')), 
@@ -62,6 +91,7 @@ app.post('/restaurants/:id/menu', async (c) => {
       return c.json({ error: error instanceof Error ? error.message : 'An unknown error occurred' }, 400);
   }
 });
+
 app.patch('/menu/:id', async (c) => {
   const { price, isAvailable } = await c.req.json<{ price: number; isAvailable: boolean }>();
   const updatedItem = await prisma.menuItem.update({ 
@@ -120,6 +150,7 @@ app.get('/orders/:id', async (c) => {
      include: { orderItems: true } });
   return c.json(order);
 });
+
 app.patch('/orders/:id/status', async (c) => {
   const { status } = await c.req.json<{ status: string }>();
   const updatedOrder = await prisma.order.update({ 
@@ -127,6 +158,7 @@ app.patch('/orders/:id/status', async (c) => {
      data: { status } });
   return c.json(updatedOrder);
 })
+
 //Reports and insights 
 app.get('/restaurants/:id/revenue', async (c) => {
   const orders = await prisma.order.findMany({ 
@@ -135,14 +167,31 @@ app.get('/restaurants/:id/revenue', async (c) => {
   const revenue = orders.reduce((sum, order) => sum + Number(order.totalPrice), 0);
   return c.json({ revenue });
 });
-app.get('/menu/top-items', async (c) => {
-  const topItems = await prisma.orderItem.groupBy({ 
-    by: ['menuItemId'], 
-    _sum: { quantity: true }, 
-    orderBy: { _sum: { quantity: 'desc' } }, 
-    take: 1
-   });
-  return c.json(topItems);
+
+app.get("/menu/top-items", async (context) => {
+  const topMenuItem = await prisma.orderItem.groupBy({
+    by: ["menuItemId"], 
+    _sum: {
+      quantity: true, 
+    },
+    orderBy: {
+      _sum: {
+        quantity: "desc", 
+      },
+    },
+    take: 1,
+  });
+if (topMenuItem.length > 0) {
+    const menuItemId = topMenuItem[0].menuItemId;
+
+    const topItem = await prisma.menuItem.findUnique({
+      where: {
+        id: menuItemId,
+      },
+    });
+      return context.json(topItem, 200);
+  }
+return context.json({ message: "No items found" }, 200);
 });
 
 
